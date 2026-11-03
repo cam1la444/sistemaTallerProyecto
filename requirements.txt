@@ -1,0 +1,6 @@
+ttkbootstrap
+pyodbc
+bcrypt
+reportlab
+matplotlib
+Pillow

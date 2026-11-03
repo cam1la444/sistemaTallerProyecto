@@ -1,0 +1,122 @@
+-- ============================================================================
+-- sql/01_schema.sql 
+-- se encuentra los datos para los login y registrarse + la del modulo de creacion de clientes
+-- ============================================================================
+IF DB_ID('Taller') IS NULL CREATE DATABASE Taller;
+GO
+USE Taller;
+GO
+
+-- Configuración (el IVA lo lee la pantalla de ventas)
+IF OBJECT_ID('Configuracion', 'U') IS NULL
+BEGIN
+    CREATE TABLE Configuracion (clave VARCHAR(30) PRIMARY KEY, valor VARCHAR(50) NOT NULL);
+    INSERT INTO Configuracion VALUES ('IVA', '0.13');
+END
+GO
+
+-- Usuarios y roles
+-- pendiente = 1: la cuenta se registró sola desde el login y espera que un administrador la apruebe.
+-- Solo puede iniciar sesión si activo = 1 (aprobar = activo 1 y pendiente 0).
+IF OBJECT_ID('Usuarios', 'U') IS NULL
+CREATE TABLE Usuarios (
+    id_usuario     INT IDENTITY PRIMARY KEY,
+    usuario        VARCHAR(30)  NOT NULL UNIQUE,
+    nombre         VARCHAR(100) NOT NULL,
+    password_hash  VARCHAR(100) NOT NULL,
+    rol            VARCHAR(20)  NOT NULL,
+    activo         BIT NOT NULL DEFAULT 1,
+    pendiente      BIT NOT NULL DEFAULT 0,
+    fecha_creacion DATETIME NOT NULL DEFAULT GETDATE(),
+    CONSTRAINT CK_Usuarios_rol CHECK (rol IN ('Administrador', 'Vendedor', 'Mecanico', 'Bodega'))
+);
+GO
+
+-- Actualización para bases creadas con la versión anterior (si la tabla ya está al día, no hace nada)
+IF COL_LENGTH('Usuarios', 'pendiente') IS NULL
+    ALTER TABLE Usuarios ADD pendiente BIT NOT NULL CONSTRAINT DF_Usuarios_pendiente DEFAULT 0;
+GO
+IF COL_LENGTH('Usuarios', 'fecha_creacion') IS NULL
+    ALTER TABLE Usuarios ADD fecha_creacion DATETIME NOT NULL CONSTRAINT DF_Usuarios_fecha DEFAULT GETDATE();
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints
+               WHERE name = 'CK_Usuarios_rol' AND parent_object_id = OBJECT_ID('Usuarios'))
+BEGIN
+    DECLARE @ck NVARCHAR(200) = (SELECT TOP 1 name FROM sys.check_constraints
+                                 WHERE parent_object_id = OBJECT_ID('Usuarios') AND definition LIKE '%rol%');
+    IF @ck IS NOT NULL EXEC('ALTER TABLE Usuarios DROP CONSTRAINT [' + @ck + ']');
+    ALTER TABLE Usuarios ADD CONSTRAINT CK_Usuarios_rol
+        CHECK (rol IN ('Administrador', 'Vendedor', 'Mecanico', 'Bodega'));
+END
+GO
+
+-- Comprobación: deben verse las 8 columnas
+SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Usuarios' ORDER BY ORDINAL_POSITION;
+GO
+
+-- para MODULO CLIENTES
+
+-- Clientes: se registran UNA sola vez. 'visitas' lo incrementa el módulo de órdenes.
+IF OBJECT_ID('Clientes', 'U') IS NULL
+CREATE TABLE Clientes (
+    id_cliente     INT IDENTITY PRIMARY KEY,
+    codigo         AS ('CLI-' + RIGHT('00000' + CAST(id_cliente AS VARCHAR(10)), 5)) PERSISTED,
+    tipo_persona   VARCHAR(10)  NOT NULL DEFAULT 'Natural',
+    nombre         VARCHAR(120) NOT NULL,
+    dui            VARCHAR(10)  NULL,          -- formato 00000000-0
+    nit            VARCHAR(17)  NULL,
+    telefono       VARCHAR(20)  NOT NULL,
+    correo         VARCHAR(100) NULL,
+    direccion      VARCHAR(200) NULL,
+    visitas        INT NOT NULL DEFAULT 0,     -- visitas completadas (base del descuento)
+    fecha_creacion DATETIME NOT NULL DEFAULT GETDATE(),
+    CONSTRAINT CK_Clientes_tipo CHECK (tipo_persona IN ('Natural', 'Juridica'))
+);
+GO
+
+-- DUI único solo cuando existe (varios clientes pueden tener DUI vacío)
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_Clientes_dui' AND object_id = OBJECT_ID('Clientes'))
+    CREATE UNIQUE INDEX UX_Clientes_dui ON Clientes(dui) WHERE dui IS NOT NULL;
+GO
+
+-- Vehículos: un cliente puede tener varios (autos y motos). Placa única.
+IF OBJECT_ID('Vehiculos', 'U') IS NULL
+CREATE TABLE Vehiculos (
+    id_vehiculo  INT IDENTITY PRIMARY KEY,
+    id_cliente   INT NOT NULL REFERENCES Clientes(id_cliente),
+    placa        VARCHAR(12) NOT NULL UNIQUE,
+    tipo         VARCHAR(5)  NOT NULL,         -- Auto | Moto
+    marca        VARCHAR(40) NOT NULL,
+    modelo       VARCHAR(40) NOT NULL,
+    anio         INT NOT NULL,
+    color        VARCHAR(30) NULL,
+    kilometraje  INT NOT NULL DEFAULT 0,
+    puertas      INT NULL,                     -- solo Auto
+    transmision  VARCHAR(12) NULL,             -- solo Auto: Manual | Automática
+    cilindraje   INT NULL,                     -- solo Moto (cc)
+    fecha_creacion DATETIME NOT NULL DEFAULT GETDATE(),
+    CONSTRAINT CK_Vehiculos_tipo CHECK (tipo IN ('Auto', 'Moto'))
+);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Vehiculos_cliente' AND object_id = OBJECT_ID('Vehiculos'))
+    CREATE INDEX IX_Vehiculos_cliente ON Vehiculos(id_cliente);
+GO
+
+-- Descuento por frecuencia: 25% en las visitas 5, 10, 15, 20...
+-- Se le pasa cuántas visitas YA tiene el cliente; devuelve el descuento de la visita que va a hacer.
+--   0..3 previas -> 0 | 4 previas (visita 5) -> 0.25 | 5..8 -> 0 | 9 (visita 10) -> 0.25 ...
+CREATE OR ALTER FUNCTION dbo.fn_descuento_visita (@visitas_previas INT)
+RETURNS DECIMAL(4,2)
+AS
+BEGIN
+    RETURN CASE WHEN (@visitas_previas + 1) % 5 = 0 THEN 0.25 ELSE 0 END;
+END
+GO
+
+-- Comprobación
+SELECT 'Clientes' AS tabla, COUNT(*) AS columnas FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Clientes'
+UNION ALL
+SELECT 'Vehiculos', COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Vehiculos';
+SELECT visitas_previas = v, descuento = dbo.fn_descuento_visita(v) FROM (VALUES (0),(3),(4),(5),(8),(9),(14)) t(v);
+GO
