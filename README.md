@@ -8,8 +8,6 @@
 4. `python tools/probar_conexion.py` debe decir "CONEXIÓN CORRECTA" y "Tabla Usuarios correcta".
 5. `python tools/crear_admin.py` (una sola vez) y luego `python main.py` (usuario `admin`, clave `admin123`).
 
-## Aporte al sistema: Camila Melara - Creacion de roles y accesos. Login y registrarse. Aporte al modulo de cliente (registrar cliente y su vehiculo)
-
 Pantallas disponibles por ROL. 
 |---|---|
 | Administrador | Todas, incluida Usuarios |
@@ -17,6 +15,9 @@ Pantallas disponibles por ROL.
 | Mecánico | Inicio, Clientes, Órdenes |
 | Bodega | Inicio, Inventario |
 
+Aporte al sistema: - Creacion de roles y accesos. Login y registrarse. Aporte al modulo de cliente (registrar cliente y su vehiculo)
 PARTE A:  vistas de la ventana principal, roles, login, usuarios, registrarse, ingresar mediante la aceptacion de admin. LISTO✅
+
 PARTE B: vistas de clientes y sus vehiculos (formularios y treeview), vista de ordenes de reparacion(formularios y treeview), validaciones y busqueda. EN PROCESO 🟠
+
 PARTE C: inventario(servicios e insumos), ventas (reglas de descuento + IVA), factura pdf y reportes. EN PROCESO 🟠
