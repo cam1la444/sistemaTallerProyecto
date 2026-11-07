@@ -120,3 +120,88 @@ UNION ALL
 SELECT 'Vehiculos', COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Vehiculos';
 SELECT visitas_previas = v, descuento = dbo.fn_descuento_visita(v) FROM (VALUES (0),(3),(4),(5),(8),(9),(14)) t(v);
 GO
+
+--Ventas
+-- 1. Tabla de Insumos (Repuestos y accesorios)
+IF OBJECT_ID('Insumos', 'U') IS NULL
+CREATE TABLE Insumos (
+    InsumoID INT IDENTITY PRIMARY KEY,
+    Codigo VARCHAR(20) NOT NULL UNIQUE,
+    Nombre VARCHAR(100) NOT NULL,
+    Marca VARCHAR(50) NULL,
+    Costo DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    PrecioVenta DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    Stock INT NOT NULL DEFAULT 0,
+    StockMinimo INT NOT NULL DEFAULT 5,
+    Activo BIT NOT NULL DEFAULT 1
+);
+GO
+
+-- 2. Tabla de Servicios del Taller (Mano de obra, afinaciones, etc.)
+IF OBJECT_ID('Servicios', 'U') IS NULL
+CREATE TABLE Servicios (
+    ServicioID INT IDENTITY PRIMARY KEY,
+    Codigo VARCHAR(20) NOT NULL UNIQUE,
+    Nombre VARCHAR(100) NOT NULL,
+    Precio DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    Activo BIT NOT NULL DEFAULT 1
+);
+GO
+
+-- 3. Tabla de Facturas (Cabecera)
+IF OBJECT_ID('Facturas', 'U') IS NULL
+CREATE TABLE Facturas (
+    FacturaID INT IDENTITY PRIMARY KEY,
+    NumeroFactura VARCHAR(30) NOT NULL UNIQUE,
+    id_cliente INT NOT NULL REFERENCES Clientes(id_cliente),
+    UsuarioID INT NULL,
+    Fecha DATETIME NOT NULL DEFAULT GETDATE(),
+    Subtotal DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    PorcentajeDescuento DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+    MontoDescuento DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    MontoIVA DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    Total DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    Estado VARCHAR(20) NOT NULL DEFAULT 'Completada'
+);
+GO
+
+-- 4. Tabla de Detalle de Factura (Líneas de la venta)
+IF OBJECT_ID('DetalleFactura', 'U') IS NULL
+CREATE TABLE DetalleFactura (
+    DetalleID INT IDENTITY PRIMARY KEY,
+    FacturaID INT NOT NULL REFERENCES Facturas(FacturaID) ON DELETE CASCADE,
+    TipoItem VARCHAR(10) NOT NULL, -- 'Insumo' o 'Servicio'
+    InsumoID INT NULL REFERENCES Insumos(InsumoID),
+    ServicioID INT NULL REFERENCES Servicios(ServicioID),
+    Cantidad INT NOT NULL DEFAULT 1,
+    PrecioUnitario DECIMAL(10,2) NOT NULL DEFAULT 0.00
+);
+GO
+
+-- Tabla Principal de Órdenes de Servicio
+IF OBJECT_ID('Ordenes', 'U') IS NULL
+CREATE TABLE Ordenes (
+    id_orden           INT IDENTITY PRIMARY KEY,
+    codigo_orden       AS ('ORD-' + RIGHT('00000' + CAST(id_orden AS VARCHAR(10)), 5)) PERSISTED,
+    id_cliente         INT NOT NULL REFERENCES Clientes(id_cliente),
+    id_vehiculo        INT NOT NULL REFERENCES Vehiculos(id_vehiculo),
+    estado             VARCHAR(20) NOT NULL DEFAULT 'Registrado',
+    fecha_registro     DATETIME NOT NULL DEFAULT GETDATE(),
+    fecha_estimada     DATE NOT NULL,
+    descuento_aplicado DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+    observaciones      VARCHAR(250) NULL,
+    CONSTRAINT CK_Ordenes_estado CHECK (estado IN ('Registrado', 'En proceso', 'Finalizado', 'Entregado'))
+);
+GO
+
+-- Detalle de Servicios/Insumos asignados a la Orden
+IF OBJECT_ID('DetalleOrden', 'U') IS NULL
+CREATE TABLE DetalleOrden (
+    id_detalle INT IDENTITY PRIMARY KEY,
+    id_orden   INT NOT NULL REFERENCES Ordenes(id_orden) ON DELETE CASCADE,
+    tipo_item  VARCHAR(10) NOT NULL CHECK (tipo_item IN ('Servicio', 'Insumo')),
+    id_item    INT NOT NULL, -- ServicioID o InsumoID
+    nombre     VARCHAR(100) NOT NULL,
+    precio     DECIMAL(10,2) NOT NULL DEFAULT 0.00
+);
+GO

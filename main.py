@@ -18,7 +18,7 @@ def error_inesperado(tipo, valor, tb):
 
 
 app.report_callback_exception = error_inesperado
-app.style.configure("Treeview", rowheight=28)     # filas más cómodas en todas las tablas
+app.style.configure("Treeview", rowheight=28)     # filas mas cómodas en todas las tablas
 
 
 def limpiar():
