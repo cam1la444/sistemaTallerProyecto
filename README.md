@@ -21,3 +21,7 @@ PARTE A:  vistas de la ventana principal, roles, login, usuarios, registrarse, i
 PARTE B: vistas de clientes y sus vehiculos (formularios y treeview), vista de ordenes de reparacion(formularios y treeview), validaciones y busqueda. EN PROCESO 🟠
 
 PARTE C: inventario(servicios e insumos), ventas (reglas de descuento + IVA), factura pdf y reportes. EN PROCESO 🟠
+
+
+Ejecutar la 02_datos para visualizar el inventario
+inventario y ventas funciona en conjunto
