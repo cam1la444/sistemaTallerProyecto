@@ -6,6 +6,11 @@ import tkinter as tk
 from tkinter import messagebox
 from core.database import consultar, get_connection
 
+
+class StockInsuficiente(Exception):
+    """Se intentó vender más unidades de las que hay en bodega (la factura no se registra)."""
+
+
 class VentasFrame(ttk.Frame):
     def __init__(self, master):
         super().__init__(master, padding=20)
@@ -145,7 +150,7 @@ class VentasFrame(ttk.Frame):
             for i in res_ins:
                 texto = f"{i['Codigo']} - {i['Nombre']} (${i['PrecioVenta']:.2f} | Stock: {i['Stock']})"
                 ins_lista.append(texto)
-                self.insumos_dict[texto] = {"id": i['InsumoID'], "nombre": i['Nombre'], "precio": i['PrecioVenta'], "stock": i['Stock']}
+                self.insumos_dict[texto] = {"id": i['InsumoID'], "nombre": i['Nombre'], "precio": float(i['PrecioVenta']), "stock": i['Stock']}
             self.combo_insumos['values'] = ins_lista
 
             # Servicios del taller
@@ -207,8 +212,12 @@ class VentasFrame(ttk.Frame):
             messagebox.showwarning("Advertencia", "La cantidad debe ser un entero válido.")
             return
 
-        if cant > datos_ins["stock"]:
-            messagebox.showwarning("Stock Insuficiente", f"Solo hay {datos_ins['stock']} unidades disponibles de {datos_ins['nombre']}.")
+        en_carrito = sum(i["cantidad"] for i in self.carrito
+                         if i["tipo"] == "Insumo" and i["id"] == datos_ins["id"])
+        disponible = datos_ins["stock"] - en_carrito
+        if cant > disponible:
+            extra = f" (ya tiene {en_carrito} en el cobro)" if en_carrito else ""
+            messagebox.showwarning("Stock Insuficiente", f"Solo hay {disponible} unidades disponibles de {datos_ins['nombre']}{extra}.")
             return
 
         subtotal = cant * datos_ins["precio"]
@@ -339,6 +348,15 @@ class VentasFrame(ttk.Frame):
                         item["precio"]
                     ))
 
+                    # Descontar del inventario. La condición Stock >= cantidad hace el descuento atómico:
+                    # si otro usuario vendió la pieza mientras tanto, no se factura (rollback de todo).
+                    if item["tipo"] == "Insumo":
+                        cur.execute("UPDATE Insumos SET Stock = Stock - ? WHERE InsumoID = ? AND Stock >= ?",
+                                    (item["cantidad"], item["id"], item["cantidad"]))
+                        if cur.rowcount == 0:
+                            raise StockInsuficiente(f"Ya no hay stock suficiente de «{item['nombre']}» "
+                                                    f"para vender {item['cantidad']} unidad(es).")
+
                 # Incrementar las visitas del cliente
                 cur.execute("UPDATE Clientes SET visitas = visitas + 1 WHERE id_cliente = ?", (self.cliente_actual_id,))
                 
@@ -348,5 +366,11 @@ class VentasFrame(ttk.Frame):
             self.limpiar_carrito()
             self.cargar_combos()
 
+        except StockInsuficiente as ex:
+            messagebox.showwarning("Stock Insuficiente",
+                                   f"{ex}\nNo se generó la factura. Quite o reduzca ese ítem y vuelva a cobrar.")
+            cliente = self.combo_clientes.get()
+            self.cargar_combos()      # refresca el stock mostrado en el desplegable de insumos
+            self.combo_clientes.set(cliente)      # cargar_combos vacía el cliente; se conserva el elegido
         except Exception as ex:
             messagebox.showerror("Error de Base de Datos", f"No se pudo completar el cobro:\n{ex}")
