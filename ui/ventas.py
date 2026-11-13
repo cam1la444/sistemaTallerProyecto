@@ -368,7 +368,7 @@ class VentasFrame(ttk.Frame):
 
         except StockInsuficiente as ex:
             messagebox.showwarning("Stock Insuficiente",
-                                   f"{ex}\nNo se generó la factura. Quite o reduzca ese ítem y vuelva a cobrar.")
+                            f"{ex}\nNo se generó la factura. Quite o reduzca ese ítem y vuelva a cobrar.")
             cliente = self.combo_clientes.get()
             self.cargar_combos()      # refresca el stock mostrado en el desplegable de insumos
             self.combo_clientes.set(cliente)      # cargar_combos vacía el cliente; se conserva el elegido

@@ -139,7 +139,7 @@ class OrdenesFrame(ttk.Frame):
         """Modal para agendar una cita/orden asociando cliente, vehículo y servicios."""
         modal = ttk.Toplevel(self)
         modal.title("Registrar Orden de Servicio")
-        modal.geometry("520x650")
+        modal.geometry(f"580x{min(730, modal.winfo_screenheight() - 90)}")
         modal.resizable(False, False)
         modal.transient(self)
         modal.grab_set()
@@ -206,29 +206,89 @@ class OrdenesFrame(ttk.Frame):
         spin_dias.set(2) # Por defecto 2 días
         spin_dias.grid(row=4, column=1, sticky="w", pady=5)
         
-        # Servicios a Asignar
-        ttk.Label(cont, text="4. Seleccionar Servicios/Insumos:").grid(row=5, column=0, sticky="w", pady=5)
-        
-        tabla_serv = ttk.Treeview(cont, columns=("nombre", "precio"), show="headings", height=5)
-        tabla_serv.heading("nombre", text="Servicio / Repuesto")
+        # Servicios a realizar: salen de la tabla Servicios y se marcan con un clic (☐ -> ☑)
+        ttk.Label(cont, text="4. Servicios a realizar (clic para marcar):").grid(
+            row=5, column=0, columnspan=2, sticky="w", pady=(8, 2))
+        fila_busq = ttk.Frame(cont)
+        fila_busq.grid(row=6, column=0, columnspan=2, sticky="ew")
+        ttk.Label(fila_busq, text="Buscar servicio:").pack(side="left")
+        var_busq = tk.StringVar()
+        ttk.Entry(fila_busq, textvariable=var_busq).pack(side="left", fill="x", expand=True, padx=(6, 0))
+
+        zona_serv = ttk.Frame(cont)
+        zona_serv.grid(row=7, column=0, columnspan=2, sticky="nsew", pady=5)
+        tabla_serv = ttk.Treeview(zona_serv, columns=("ok", "nombre", "precio"), show="headings",
+                                  height=9, selectmode="none")
+        tabla_serv.heading("ok", text="")
+        tabla_serv.heading("nombre", text="Servicio")
         tabla_serv.heading("precio", text="Precio ($)")
-        tabla_serv.column("nombre", width=250)
-        tabla_serv.column("precio", width=80, anchor="e")
-        tabla_serv.grid(row=6, column=0, columnspan=2, sticky="ew", pady=5)
-        
-        # Cargar servicios disponibles de la BD
+        tabla_serv.column("ok", width=34, anchor="center", stretch=False)
+        tabla_serv.column("nombre", width=330)
+        tabla_serv.column("precio", width=80, anchor="e", stretch=False)
+        tabla_serv.tag_configure("marcado", foreground="#00bc8c")
+        sb_serv = ttk.Scrollbar(zona_serv, orient="vertical", command=tabla_serv.yview)
+        tabla_serv.configure(yscrollcommand=sb_serv.set)
+        sb_serv.pack(side="right", fill="y")
+        tabla_serv.pack(side="left", fill="both", expand=True)
+        cont.columnconfigure(1, weight=1)
+        cont.rowconfigure(7, weight=1)
+
         servicios_disponibles = []
         try:
-            res_s = consultar("SELECT ServicioID AS id, Nombre AS nombre, Precio AS precio, 'Servicio' AS tipo FROM Servicios WHERE Activo = 1")
-            for s in res_s:
-                servicios_disponibles.append(s)
-                tabla_serv.insert("", tk.END, iid=f"s_{s['id']}", values=(s['nombre'], f"${s['precio']:.2f}"))
-        except Exception:
-            pass
+            servicios_disponibles = consultar(
+                "SELECT ServicioID AS id, Codigo AS codigo, Nombre AS nombre, Precio AS precio "
+                "FROM Servicios WHERE Activo = 1 ORDER BY Codigo")
+        except Exception as ex:
+            messagebox.showerror("Error", f"No se pudieron cargar los servicios:\n{ex}", parent=modal)
+        marcados = set()           # ids de los servicios marcados
 
-        ttk.Label(cont, text="Observaciones / Motivo:").grid(row=7, column=0, sticky="w", pady=5)
+        lbl_total = ttk.Label(cont, text="", font=("", 10, "bold"))
+        lbl_total.grid(row=8, column=0, columnspan=2, sticky="w")
+
+        def actualizar_total():
+            if not servicios_disponibles:
+                lbl_total.config(text="No hay servicios registrados (cárguelos con sql/03_servicios.sql).",
+                                 foreground="#e74c3c")
+                return
+            elegidos = [x for x in servicios_disponibles if x["id"] in marcados]
+            total = sum(float(x["precio"]) for x in elegidos)
+            lbl_total.config(foreground="",
+                             text=f"Servicios marcados: {len(elegidos)}   |   Total estimado (sin IVA): ${total:,.2f}")
+
+        def datos_fila(x):
+            marcado = x["id"] in marcados
+            return ("\u2611" if marcado else "\u2610", x["nombre"], f"${float(x['precio']):.2f}"), \
+                   (("marcado",) if marcado else ())
+
+        def dibujar_servicios(*_):
+            filtro = var_busq.get().strip().lower()
+            tabla_serv.delete(*tabla_serv.get_children())
+            for x in servicios_disponibles:
+                if filtro and filtro not in x["nombre"].lower() and filtro not in x["codigo"].lower():
+                    continue
+                valores, tags = datos_fila(x)
+                tabla_serv.insert("", tk.END, iid=f"s_{x['id']}", values=valores, tags=tags)
+
+        def alternar_servicio(event):
+            fila = tabla_serv.identify_row(event.y)
+            if not fila:
+                return "break"
+            s_id = int(fila[2:])
+            marcados.symmetric_difference_update({s_id})
+            x = next(item for item in servicios_disponibles if item["id"] == s_id)
+            valores, tags = datos_fila(x)
+            tabla_serv.item(fila, values=valores, tags=tags)
+            actualizar_total()
+            return "break"
+
+        tabla_serv.bind("<Button-1>", alternar_servicio)
+        var_busq.trace_add("write", dibujar_servicios)
+        dibujar_servicios()
+        actualizar_total()
+
+        ttk.Label(cont, text="Observaciones / Motivo:").grid(row=9, column=0, sticky="w", pady=5)
         ent_obs = ttk.Entry(cont, width=38)
-        ent_obs.grid(row=7, column=1, pady=5)
+        ent_obs.grid(row=9, column=1, sticky="ew", pady=5)
         
         def guardar_orden():
             cli_str = combo_cli.get()
@@ -249,7 +309,10 @@ class OrdenesFrame(ttk.Frame):
             desc = 25.0 if (visitas_nuevas % 5 == 0) else 0.0
             
             obs = ent_obs.get().strip()
-            serv_seleccionados = tabla_serv.selection()
+            serv_seleccionados = [x for x in servicios_disponibles if x["id"] in marcados]
+            if not serv_seleccionados and not messagebox.askyesno(
+                    "Sin servicios", "No marcó ningún servicio.\n¿Guardar la orden sin servicios?", parent=modal):
+                return
             
             try:
                 with get_connection() as cn:
@@ -265,9 +328,7 @@ class OrdenesFrame(ttk.Frame):
                     id_orden = cur.fetchone()[0]
                     
                     #Guardar los Servicios Seleccionados en el Detalle
-                    for s_iid in serv_seleccionados:
-                        s_id = int(s_iid.replace("s_", ""))
-                        serv_obj = next(item for item in servicios_disponibles if item['id'] == s_id)
+                    for serv_obj in serv_seleccionados:
                         cur.execute("INSERT INTO DetalleOrden (id_orden, tipo_item, id_item, nombre, precio) VALUES (?, 'Servicio', ?, ?, ?)",
                                     (id_orden, serv_obj['id'], serv_obj['nombre'], serv_obj['precio']))
                                     
@@ -283,6 +344,6 @@ class OrdenesFrame(ttk.Frame):
                 messagebox.showerror("Error", f"No se pudo guardar la orden:\n{ex}", parent=modal)
 
         frame_btns = ttk.Frame(cont)
-        frame_btns.grid(row=8, column=0, columnspan=2, pady=15)
+        frame_btns.grid(row=10, column=0, columnspan=2, pady=15)
         ttk.Button(frame_btns, text="Guardar Orden", bootstyle="success", command=guardar_orden).pack(side="left", padx=5)
         ttk.Button(frame_btns, text="Cancelar", bootstyle="secondary", command=modal.destroy).pack(side="left", padx=5)
