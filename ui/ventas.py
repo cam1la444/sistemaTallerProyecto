@@ -14,73 +14,77 @@ class StockInsuficiente(Exception):
 class VentasFrame(ttk.Frame):
     def __init__(self, master):
         super().__init__(master, padding=20)
-        
+
         #titulo principal
         ttk.Label(self, text="Punto de Venta y Facturación", font=("", 20, "bold")).pack(anchor="w", pady=(0, 10))
-        
+
         # Contenedor principal de dos paneles
         panel_principal = ttk.Frame(self)
         panel_principal.pack(fill="both", expand=True, pady=5)
-        
+
         panel_principal.columnconfigure(0, weight=3)
         panel_principal.columnconfigure(1, weight=2)
         panel_principal.rowconfigure(0, weight=1)
-        
+
         # -------------------------------------------------------------
         # PANEL IZQUIERDO: Selección de Cliente, Servicios e Insumos
         # -------------------------------------------------------------
         izq_frame = ttk.Frame(panel_principal, padding=5)
         izq_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
-        
+
         #Selección de Cliente
         ttk.Label(izq_frame, text="1. Seleccionar Cliente:", font=("", 11, "bold")).pack(anchor="w", pady=(0, 5))
-        
+
         f_cli = ttk.Frame(izq_frame)
         f_cli.pack(fill="x", pady=5)
         ttk.Label(f_cli, text="Cliente:").pack(side="left", padx=(0, 5))
-        
+
         self.combo_clientes = ttk.Combobox(f_cli, state="readonly", width=42)
         self.combo_clientes.pack(side="left", padx=5)
         self.combo_clientes.bind("<<ComboboxSelected>>", self.cargar_datos_cliente)
-        
+
+        # Aviso del número de factura del cliente (y del descuento, si le toca)
+        self.lbl_aviso = ttk.Label(izq_frame, text="", font=("", 10, "bold"), foreground="green")
+        self.lbl_aviso.pack(anchor="w")
+
         #servicios realizados / del taller
         ttk.Label(izq_frame, text="2. Servicios a Facturar:", font=("", 11, "bold")).pack(anchor="w", pady=(10, 5))
-        
+
         cols_serv = ("id", "servicio", "precio")
         self.tabla_servicios = ttk.Treeview(izq_frame, columns=cols_serv, show="headings", height=5)
         self.tabla_servicios.heading("id", text="ID")
-        self.tabla_servicios.heading("servicio", text="Servicio / Descripción")
+        self.tabla_servicios.heading("servicio", text="Servicio / Descripción", anchor="center")
         self.tabla_servicios.heading("precio", text="Precio ($)", anchor="w")
         self.tabla_servicios.column("id", width=40, anchor="center")
-        self.tabla_servicios.column("servicio", width=220, anchor = "center")
-        self.tabla_servicios.column("precio", width=80, anchor="w")
+        self.tabla_servicios.column("servicio", width=380, anchor="center")
+        self.tabla_servicios.column("precio", width=20, anchor="w")
         self.tabla_servicios.pack(fill="x", pady=5)
         self.tabla_servicios.bind("<Double-1>", lambda e: self.agregar_servicio_factura())
-        
+
         ttk.Button(izq_frame, text="Agregar Servicio al Cobro", bootstyle="info-outline", command=self.agregar_servicio_factura).pack(anchor="w", pady=2)
-        
+
         #insumos adicionales (Repuestos solicitados en el momento)
         ttk.Label(izq_frame, text="3. Agregar Insumos Adicionales (Repuestos):", font=("", 11, "bold")).pack(anchor="w", pady=(15, 5))
-        
+
         f_ins = ttk.Frame(izq_frame)
         f_ins.pack(fill="x", pady=5)
-        
+
         self.combo_insumos = ttk.Combobox(f_ins, state="readonly", width=28)
         self.combo_insumos.pack(side="left", padx=(0, 5))
-        
+
         ttk.Label(f_ins, text="Cant:").pack(side="left", padx=5)
         self.spin_cantidad = ttk.Spinbox(f_ins, from_=1, to=100, width=5)
         self.spin_cantidad.set(1)
         self.spin_cantidad.pack(side="left", padx=5)
-        
+
         ttk.Button(f_ins, text="Agregar Insumo", bootstyle="success-outline", command=self.agregar_insumo_factura).pack(side="left", padx=5)
-        
+
         # -------------------------------------------------------------
         # PANEL DERECHO: Detalle de Factura / Carrito y Totales
         # -------------------------------------------------------------
         der_frame = ttk.Labelframe(panel_principal, text=" Detalle de Factura / Cobro Unificado ", padding=10)
         der_frame.grid(row=0, column=1, sticky="nsew")
-        
+
         cols_fac = ("tipo", "item", "cant", "sub")
         self.tabla_carrito = ttk.Treeview(der_frame, columns=cols_fac, show="headings", height=12)
         self.tabla_carrito.heading("tipo", text="Tipo")
@@ -92,25 +96,25 @@ class VentasFrame(ttk.Frame):
         self.tabla_carrito.column("cant", width=40, anchor="center")
         self.tabla_carrito.column("sub", width=70, anchor="e")
         self.tabla_carrito.pack(fill="both", expand=True, pady=5)
-        
+
         ttk.Button(der_frame, text="Quitar Ítem Seleccionado", bootstyle="danger-outline", command=self.quitar_item_carrito).pack(anchor="e", pady=5)
-        
+
         #Totales
         frame_totales = ttk.Frame(der_frame, padding=5)
         frame_totales.pack(fill="x", pady=10)
-        
+
         self.lbl_subtotal = ttk.Label(frame_totales, text="Subtotal: $0.00", font=("", 11))
         self.lbl_subtotal.pack(anchor="e", pady=2)
-        
+
         self.lbl_descuento = ttk.Label(frame_totales, text="Descuento Frecuente: -$0.00", font=("", 11), bootstyle="success")
         self.lbl_descuento.pack(anchor="e", pady=2)
-        
+
         self.lbl_iva = ttk.Label(frame_totales, text="IVA (13%): $0.00", font=("", 11))
         self.lbl_iva.pack(anchor="e", pady=2)
-        
+
         self.lbl_total = ttk.Label(frame_totales, text="TOTAL: $0.00", font=("", 14, "bold"), bootstyle="primary")
         self.lbl_total.pack(anchor="e", pady=5)
-        
+
         #Boton para cobrar y generar la factura
         ttk.Button(der_frame, text="Cobrar y Generar Factura", bootstyle="success", command=self.procesar_cobro).pack(fill="x", pady=5)
 
@@ -120,7 +124,7 @@ class VentasFrame(ttk.Frame):
         self.insumos_dict = {}
         self.servicios_dict = {}
         self.cliente_actual_id = None
-        self.visitas_cliente = 0
+        self.visitas_cliente = 0      # facturas ya cobradas al cliente (la factura en curso será la siguiente)
         self.totales_calculados = {"subtotal": 0, "porcentaje_desc": 0, "monto_desc": 0, "monto_iva": 0, "total": 0}
 
     def al_mostrar(self):
@@ -165,7 +169,7 @@ class VentasFrame(ttk.Frame):
             messagebox.showerror("Error", f"No se pudieron cargar los datos de ventas:\n{e}")
 
     def cargar_datos_cliente(self, event):
-        """Identifica al cliente seleccionado y sus visitas para el descuento de fidelidad."""
+        """Identifica al cliente seleccionado y sus facturas previas para el descuento de fidelidad."""
         seleccion = self.combo_clientes.get()
         if not seleccion:
             return
@@ -173,6 +177,14 @@ class VentasFrame(ttk.Frame):
         if datos:
             self.cliente_actual_id = datos["id"]
             self.visitas_cliente = datos["visitas"]
+
+            # Aviso: la factura que se va a generar es la siguiente a las ya cobradas
+            numero = self.visitas_cliente + 1
+            if numero % 5 == 0:
+                self.lbl_aviso.config(text=f"¡Factura #{numero} del cliente! Aplica 25% de descuento.")
+            else:
+                self.lbl_aviso.config(text=f"Factura #{numero} del cliente.")
+
             self.recalcular_totales()
 
     def agregar_servicio_factura(self):
@@ -249,12 +261,13 @@ class VentasFrame(ttk.Frame):
         self.recalcular_totales()
 
     def recalcular_totales(self):
-        """Calcula subtotal, descuento (25% cada 5 visitas), IVA y total."""
+        """Calcula subtotal, descuento (25% en la factura 5, 10, 15...), IVA y total."""
         subtotal = sum(item["subtotal"] for item in self.carrito)
 
-        #Regla de descuento del 25% en las visitas
+        #Regla de descuento del 25% por facturas:
+        #visitas_cliente = facturas ya cobradas; esta será la siguiente (5ª, 10ª, 15ª... llevan descuento)
         porcentaje_desc = 0.0
-        if self.visitas_cliente > 0 and (self.visitas_cliente + 1) % 5 == 0:
+        if (self.visitas_cliente + 1) % 5 == 0:
             porcentaje_desc = 25.0
 
         monto_desc = subtotal * (porcentaje_desc / 100.0)
@@ -290,12 +303,13 @@ class VentasFrame(ttk.Frame):
         self.carrito.clear()
         self.cliente_actual_id = None
         self.visitas_cliente = 0
+        self.lbl_aviso.config(text="")
         if self.combo_clientes['values']:
             self.combo_clientes.set('')
         self.actualizar_tabla_carrito()
 
     def procesar_cobro(self):
-        """Registra la factura usando diccionarios y suma una visita al cliente."""
+        """Registra la factura usando diccionarios y suma una factura al contador del cliente."""
         if not self.cliente_actual_id:
             messagebox.showwarning("Advertencia", "Debe seleccionar un cliente antes de procesar el cobro.")
             return
@@ -308,7 +322,7 @@ class VentasFrame(ttk.Frame):
         try:
             with get_connection() as cn:
                 cur = cn.cursor()
-                
+
                 #numero de factura consecutivo basado en la tabla Facturas
                 cur.execute("SELECT ISNULL(MAX(FacturaID), 0) + 1 FROM Facturas")
                 next_id = cur.fetchone()[0]
@@ -357,9 +371,10 @@ class VentasFrame(ttk.Frame):
                             raise StockInsuficiente(f"Ya no hay stock suficiente de «{item['nombre']}» "
                                                     f"para vender {item['cantidad']} unidad(es).")
 
-                # Incrementar las visitas del cliente
+                # Contar esta factura para el cliente. Es el ÚNICO lugar donde sube el contador
+                # y se ejecuta después de calcular el descuento, en la misma transacción que la factura.
                 cur.execute("UPDATE Clientes SET visitas = visitas + 1 WHERE id_cliente = ?", (self.cliente_actual_id,))
-                
+
                 cn.commit()
 
             messagebox.showinfo("Venta Exitosa", f"Se ha generado la {num_factura} por un total de ${totales['total']:.2f}.")
@@ -368,7 +383,7 @@ class VentasFrame(ttk.Frame):
 
         except StockInsuficiente as ex:
             messagebox.showwarning("Stock Insuficiente",
-                            f"{ex}\nNo se generó la factura. Quite o reduzca ese ítem y vuelva a cobrar.")
+                                   f"{ex}\nNo se generó la factura. Quite o reduzca ese ítem y vuelva a cobrar.")
             cliente = self.combo_clientes.get()
             self.cargar_combos()      # refresca el stock mostrado en el desplegable de insumos
             self.combo_clientes.set(cliente)      # cargar_combos vacía el cliente; se conserva el elegido
