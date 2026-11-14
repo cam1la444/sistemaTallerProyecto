@@ -50,10 +50,10 @@ class VentasFrame(ttk.Frame):
         self.tabla_servicios = ttk.Treeview(izq_frame, columns=cols_serv, show="headings", height=5)
         self.tabla_servicios.heading("id", text="ID")
         self.tabla_servicios.heading("servicio", text="Servicio / Descripción")
-        self.tabla_servicios.heading("precio", text="Precio ($)")
+        self.tabla_servicios.heading("precio", text="Precio ($)", anchor="w")
         self.tabla_servicios.column("id", width=40, anchor="center")
-        self.tabla_servicios.column("servicio", width=220)
-        self.tabla_servicios.column("precio", width=80, anchor="e")
+        self.tabla_servicios.column("servicio", width=220, anchor = "center")
+        self.tabla_servicios.column("precio", width=80, anchor="w")
         self.tabla_servicios.pack(fill="x", pady=5)
         self.tabla_servicios.bind("<Double-1>", lambda e: self.agregar_servicio_factura())
         

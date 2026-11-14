@@ -38,8 +38,8 @@ class UsuariosFrame(ttk.Frame):
         columnas = ("usuario", "nombre", "rol", "estado", "creado")
         self.tabla = ttk.Treeview(marco, columns=columnas, show="headings", selectmode="browse")
         for col, texto, ancho in (("usuario", "Usuario", 130), ("nombre", "Nombre completo", 240),
-                                  ("rol", "Rol", 120), ("estado", "Estado", 100), ("creado", "Creado", 120)):
-            self.tabla.heading(col, text=texto)
+                                  ("rol", "Rol", 120), ("estado", "Estado", 130), ("creado", "Creado", 120)):
+            self.tabla.heading(col, text=texto, anchor="w")
             self.tabla.column(col, width=ancho, anchor="w")
         barra = ttk.Scrollbar(marco, orient="vertical", command=self.tabla.yview)
         self.tabla.configure(yscrollcommand=barra.set)

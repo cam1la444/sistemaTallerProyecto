@@ -220,12 +220,12 @@ class InventarioFrame(ttk.Frame):
         zona = ttk.Frame(self)
         zona.pack(fill="both", expand=True)
         self.tabla = ttk.Treeview(zona, columns=cols, show="headings", selectmode="browse")
-        encabezados = [("codigo", "Código", 75, "center"), ("nombre", "Repuesto", 100, "w"),
-                    ("marca", "Marca", 75, "w"), ("costo", "Compra mayorista", 140, "e"),
-                    ("venta", "Venta cliente", 105, "e"), ("stock", "Stock", 55, "center"),
-                    ("minimo", "Mínimo", 70, "center"), ("estado", "Estado", 65, "center")]
+        encabezados = [("codigo", "Código", 225, "w"), ("nombre", "Repuesto", 100, "w"),
+                    ("marca", "Marca", 175, "w"), ("costo", "Compra mayorista", 140, "w"),
+                    ("venta", "Venta cliente", 155, "w"), ("stock", "Stock", 155, "w"),
+                    ("minimo", "Mínimo", 100, "w"), ("estado", "Estado", 165, "w")]
         for clave, texto, ancho, ancla in encabezados:
-            self.tabla.heading(clave, text=texto)
+            self.tabla.heading(clave, text=texto, anchor="w")
             self.tabla.column(clave, width=ancho, anchor=ancla, stretch=(clave == "nombre"),
                             minwidth=100 if clave == "nombre" else 45)
         sb = ttk.Scrollbar(zona, orient="vertical", command=self.tabla.yview)

@@ -309,12 +309,12 @@ class ClientesFrame(ttk.Frame):
 
         cols = ("nombre", "dui", "telefono", "vehiculos", "visitas", "descuento")
         self.tree = ttk.Treeview(self, columns=cols, selectmode="browse")
-        self.tree.heading("#0", text="Código / Placa")
-        self.tree.column("#0", width=150)
+        self.tree.heading("#0", text="Código / Placa", anchor="w")
+        self.tree.column("#0", width=150, anchor="w")
         for c, t, w in [("nombre", "Nombre / Vehículo", 280), ("dui", "DUI", 110),
                         ("telefono", "Teléfono", 110), ("vehiculos", "Vehíc.", 60),
                         ("visitas", "Visitas", 60), ("descuento", "Descuento", 190)]:
-            self.tree.heading(c, text=t)
+            self.tree.heading(c, text=t, anchor="w")
             self.tree.column(c, width=w, anchor="w")
         sb = ttk.Scrollbar(self, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=sb.set)

@@ -411,13 +411,13 @@ class PestanaResumen(ttk.Frame):
             self.notas[clave].pack(anchor="w")
 
         ttk.Label(self, text="Últimas facturas", font=("", 12, "bold")).pack(anchor="w", pady=(14, 4))
-        cols = (("numero", "Factura", 130, "w"), ("fecha", "Fecha", 140, "center"), ("cliente", "Cliente", 280, "w"),
-                ("total", "Total", 90, "e"), ("estado", "Estado", 90, "center"))
+        cols = (("numero", "Factura", 280, "w"), ("fecha", "Fecha", 380, "w"), ("cliente", "Cliente", 210, "w"),
+                ("total", "Total", 290, "w"), ("estado", "Estado", 290, "w"))
         zona = ttk.Frame(self)
         zona.pack(fill="both", expand=True)
         self.tabla = ttk.Treeview(zona, columns=[c[0] for c in cols], show="headings", selectmode="browse", height=7)
         for clave, titulo, ancho, ancla in cols:
-            self.tabla.heading(clave, text=titulo)
+            self.tabla.heading(clave, text=titulo, anchor="w")
             self.tabla.column(clave, width=ancho, anchor=ancla, stretch=(clave == "cliente"), minwidth=50)
         sb = ttk.Scrollbar(zona, orient="vertical", command=self.tabla.yview)
         self.tabla.configure(yscrollcommand=sb.set)
@@ -498,14 +498,14 @@ class PestanaClientes(ttk.Frame):
         self.lbl_detalle.pack(anchor="w", pady=(2, 8))
 
         ttk.Label(der, text="Facturas del cliente", font=("", 11, "bold")).pack(anchor="w")
-        cols_f = (("numero", "Factura", 120, "w"), ("fecha", "Fecha", 90, "center"), ("subtotal", "Subtotal", 72, "e"),
-                  ("total", "Total", 72, "e"), ("estado", "Estado", 92, "center"))
+        cols_f = (("numero", "Factura", 10, "w"), ("fecha", "Fecha", 230, "w"), ("subtotal", "Subtotal", 200, "w"),
+                  ("total", "Total", 200, "w"), ("estado", "Estado", 230, "w"))
         zona_f = ttk.Frame(der)
         zona_f.pack(fill="both", expand=True, pady=(3, 8))
         self.tabla_facturas = ttk.Treeview(zona_f, columns=[c[0] for c in cols_f], show="headings",
                                            selectmode="browse", height=7)
         for clave, titulo, ancho, ancla in cols_f:
-            self.tabla_facturas.heading(clave, text=titulo)
+            self.tabla_facturas.heading(clave, text=titulo, anchor="w")
             self.tabla_facturas.column(clave, width=ancho, anchor=ancla, stretch=(clave == "numero"))
         sb2 = ttk.Scrollbar(zona_f, orient="vertical", command=self.tabla_facturas.yview)
         self.tabla_facturas.configure(yscrollcommand=sb2.set)
